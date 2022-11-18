@@ -3,9 +3,13 @@ from tkinter import *
 from tkinter.filedialog import *
 from PIL import ImageTk, Image, ImageGrab
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk
+from tkinter import messagebox
+from fpdf import FPDF
+from datetime import date
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+import os
 #************************************************************ VARIABLES GLOBALES
 # image=""
 # canvas=""
@@ -16,11 +20,17 @@ import cv2
 # azul=""
 # h=""
 # s=""
-# l=""
+# l="
 #************************************************************ FUNCIONES PROPIAS
-
+def SSimagen():
+	window.update()
+	xi=window.winfo_x()
+	yi=window.winfo_y()
+	Imagencargada = ImageGrab.grab(bbox=(xi+58,yi+81,xi+958,yi+581))
+	Imagencargada.save("Imagencargada.png")
+	
 def abrir():
-	global image, myvar
+	global image, myvar, path
 	path = askopenfilename(initialdir="Desktop", title='Selecciona imagen', filetype=(("Imagen", ".jpg"), ("All Files", "*.*")))
 	im = Image.open(path)
 	tkimage = ImageTk.PhotoImage(im.resize((900,500)))
@@ -28,6 +38,15 @@ def abrir():
 	myvar.image = tkimage
 	image = cv2.imread(path)
 	myvar.pack()
+	window.after(1,SSimagen)
+	
+def SSRGB():
+	global histRGB
+	window.update()
+	xi=window.winfo_x()
+	yi=window.winfo_y()
+	histRGB= ImageGrab.grab(bbox=(xi+118,yi+81,xi+898,yi+560))
+	histRGB.save("histRGB.png")
 	
 def calcularHIST_RGB():
 	global image, canvas,toolbar, myvar, rojo, verde, azul
@@ -50,7 +69,16 @@ def calcularHIST_RGB():
 	rojo=np.argmax(hist_r)
 	verde=np.argmax(hist_g)
 	azul=np.argmax(hist_b)	
-
+	window.after(1,SSRGB)
+	
+def SSHSL():
+	global grafHSL
+	window.update()
+	xi=window.winfo_x()
+	yi=window.winfo_y()
+	grafHSL = ImageGrab.grab(bbox=(xi+190,yi+85,xi+830,yi+560))
+	grafHSL.save("grafHSL.png")
+	
 def calcularHIST_HLS():
 	global rojo, verde, azul, h,s,l, canvas, canvas2, toolbar, myvar
 	canvas.get_tk_widget().pack_forget()
@@ -94,9 +122,10 @@ def calcularHIST_HLS():
 	canvas2.draw()
 	canvas2.get_tk_widget().place(relx=0.5, rely=0.5, anchor=CENTER)
 	GeneTabla()
+	window.after(1,SSHSL)
 	
 def GeneTabla():
-	global h,s,l, frame2
+	global h,s,l, frame2, H,S,L
 	H=round(h,3)
 	S=round(s,3)
 	L=round(l,3)
@@ -110,12 +139,10 @@ def GeneTabla():
 
 def Borrar():
 	for widgets in frame.winfo_children():
-		widgets.destroy()	
-
-def saveimagesasPDF():
-	fichero = asksaveasfile(title="Guardar", mode='wb',defaultextension=".pdf")
-	fichero.write()
-	fichero.close()
+		widgets.destroy()
+		os.remove('Imagencargada.png')
+		os.remove('histRGB.png')
+		os.remove('grafHSL.png')
 		
 def MostrarImagen():
 	global canvas, toolbar, myvar, canvas2, frame2, Tabla
@@ -144,41 +171,64 @@ def MostrarHSL():
 	canvas.get_tk_widget().pack_forget()
 	toolbar.pack_forget()
 	myvar.pack_forget()
+
+def Salir():
+	if messagebox.askokcancel("Cerrar", "¿Desea cerrar?"):
+		window.quit()
+	os.remove('Imagencargada.png')
+	os.remove('histRGB.png')
+	os.remove('grafHSL.png')
+		
+def menu():
+	menubar = Menu(window)
+	window.config(menu=menubar)
+	filemenu = Menu(menubar, tearoff=0)
+	filemenu.add_command(label="Abrir",command=abrir)
+	filemenu.add_command(label="Borrar",command=Borrar)
+	filemenu.add_command(label="Generar reporte", command=Reporte)
+	filemenu.add_separator()
+	filemenu.add_command(label="Salir", command=Salir)
+	visualmenu = Menu(menubar, tearoff=0)
+	visualmenu.add_command(label="Imagen cargada",command=MostrarImagen)
+	visualmenu.add_command(label="Grafico RGB calculado",command=MostrarRGB)
+	visualmenu.add_command(label="Grafico HSL",command=MostrarHSL)
+	menubar.add_cascade(label="Archivo", menu=filemenu)
+	menubar.add_cascade(label="Visualizacion", menu=visualmenu)	
+	
+def Reporte():
+	global Imagencargada,histRGB ,grafHSL, path,H,S,L,rojo, verde, azul
+	# 1. Set up the PDF doc basics
+	pdf = FPDF()
+	pdf.add_page()
+	pdf.set_font('Arial', 'B', 16)
+	today = date.today()
+	hoy= str(today)
+	pdf.cell(40, 10, 'Reporte quimiHS        '+ str(hoy))
+	pdf.ln(20)
+	pdf.image('Imagencargada.png', x=10,y=20, w = 80, h = 45)
+	pdf.image("histRGB.png", x=110,y=15 , w = 90, h = 60)
+	pdf.image("grafHSL.png", x=10 ,y=80, w = 80, h = 60)
+	pdf.set_font("Arial","",12)
+	pdf.set_xy(110,80)
+	Archivo=path
+	N_archivo=os.path.basename(Archivo)
+	pdf.cell(40, 10, 'Archivo: '+ str(N_archivo))
+	pdf.set_xy(110,90)
+	pdf.multi_cell(80,10,"R="+str(rojo)+"\nG="+str(verde)+"\nB="+str(azul)+"\n%H="+str(H)+"\n%S="+str(S)+"\n%L="+str(L), border=1)
+	pdf.output("Reporte quimiHS generado","F")
+	
 	
 #************************************************************ VENTANA
 window = Tk()
 window.title("quimiHS")
 window.geometry("1000x700")
 window.resizable(False, False)
+menu()
 frame = LabelFrame(window)
 frame.place(relx=0.5,rely=0.4, anchor=CENTER)
-#-------------------------------------------MENU
-
-menubar = Menu(window)
-window.config(menu=menubar)
-filemenu = Menu(menubar, tearoff=0)
-filemenu.add_command(label="Abrir",command=abrir)
-filemenu.add_command(label="Borrar",command=Borrar)
-filemenu.add_command(label="Guardar", command=saveimagesasPDF)
-filemenu.add_separator()
-filemenu.add_command(label="Salir", command=window.quit)
-visualmenu = Menu(menubar, tearoff=0)
-visualmenu.add_command(label="Imagen cargada",command=MostrarImagen)
-visualmenu.add_command(label="Grafico RGB calculado",command=MostrarRGB)
-visualmenu.add_command(label="Grafico HSL",command=MostrarHSL)
-menubar.add_cascade(label="Archivo", menu=filemenu)
-menubar.add_cascade(label="Visualizacion", menu=visualmenu)
-
 #-------------------------------------------BOTONES
 button1 = Button(window, text="Calcular histograma RBG", command=calcularHIST_RGB).place(relx=0.4,rely=0.815,height=40)
 button2 = Button(window, text="Calcular HSL", command=calcularHIST_HLS).place(relx=0.6,rely=0.815,height=40)
-
-# def XY():
-	# frame.update()
-	# print(frame.winfo_x(),frame.winfo_y())
-	
-button3 = Button(window, text="posiciones", command=XY).place(relx=0.1,rely=0.915,height=40)  
 #"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" FINAL
-
-	
+window.protocol("WM_DELETE_WINDOW", Salir)
 window.mainloop()
