@@ -215,8 +215,8 @@ def Reporte():
 	pdf.cell(40, 10, 'Archivo: '+ str(N_archivo))
 	pdf.set_xy(110,90)
 	pdf.multi_cell(80,10,"R="+str(rojo)+"\nG="+str(verde)+"\nB="+str(azul)+"\n%H="+str(H)+"\n%S="+str(S)+"\n%L="+str(L), border=1)
-	pdf.output("Reporte quimiHS generado","F")
-	
+	path_save= asksaveasfile(title="Guardar reporte", defaultextension=".pdf")
+	pdf.output(str(path_save.name),"F")
 	
 #************************************************************ VENTANA
 window = Tk()
